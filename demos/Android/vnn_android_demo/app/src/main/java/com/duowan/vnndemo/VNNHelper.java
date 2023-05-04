@@ -1,13 +1,21 @@
+//-------------------------------------------------------------------------------------------------------
+// Copyright (c) 2021 Guangzhou Joyy Information Technology Co., Ltd. All rights reserved.
+// Licensed under the MIT license. See license.txt file in the project root for full license information.
+//-------------------------------------------------------------------------------------------------------
 package com.duowan.vnndemo;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.util.Log;
+
+import androidx.annotation.ColorInt;
 
 import com.duowan.vnnlib.VNN;
 
@@ -36,6 +44,8 @@ public class VNNHelper {
         public static final int VNN_OBJECT_CLASSIFICATION = 18;
         public static final int VNN_SCENE_WEATHER = 19;
         public static final int VNN_PERSON_ATTRIBUTE = 20;
+        public static final int VNN_VIDEO_PORTRAIT_SEG = 21;
+        public static final int VNN_POSE_LANDMARKS = 22;
     }
     private Context mContext;
     public int mVnnID = VNN.VNN_INVALID_HANDLE;
@@ -53,14 +63,19 @@ public class VNNHelper {
     public VNN.VNN_ImageArr disneyDataArr = new VNN.VNN_ImageArr();
     public VNN.VNN_ImageArr game3dDataArr = new VNN.VNN_ImageArr();
     public VNN.VNN_ImageArr game3dMaskDataArr = new VNN.VNN_ImageArr();
-//    private VNN.VNN_ImageArr imageArr = new VNN.VNN_ImageArr();
+    //    private VNN.VNN_ImageArr imageArr = new VNN.VNN_ImageArr();
     private VNN.VNN_GestureFrameDataArr gestureFrameData = new VNN.VNN_GestureFrameDataArr();
     private VNN.VNN_ObjCountDataArr objCountDataArr = new VNN.VNN_ObjCountDataArr();
     private VNN.VNN_MultiClsTopNAccArr multiClsDataArr = new VNN.VNN_MultiClsTopNAccArr();
+    private VNN.VNN_BodyFrameDataArr bodyFrameDataArr = new VNN.VNN_BodyFrameDataArr();
     public int mOutImgWidth, mOutImgHeight;
     private int mDisneyImgWidth, mDisneyImgHeight;
     private int m3dGameImgWidth, m3dGameImgHeight, m3dGameImgChannel, m3dGameMaskChannel;
 
+    private Bitmap mBackgroundImage = null;
+
+    private int[] pa = {1, 1, 2, 3, 5, 6, 1, 8, 9, 1, 11, 12, 1, 0, 15, 0, 14, 2, 5, 4, 7, 10, 13, 8};
+    private int[] pb = {2, 5, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 0, 15, 17, 14, 16, 16, 17, 18, 19, 20, 21, 11};
 
     public VNNHelper(Context context) {
         mContext = context;
@@ -245,6 +260,17 @@ public class VNNHelper {
             mOutImgWidth = 384;
             mOutImgHeight = 512;
         }
+        if(effectMode == VNN_EFFECT_MODE.VNN_VIDEO_PORTRAIT_SEG) {
+            String[] modelPath = {
+                    sdcard + "/vnn_portraitseg_data/seg_portrait_video[1.0.0].vnnmodel",
+                    sdcard + "/vnn_portraitseg_data/seg_portrait_video[1.0.0]_process_config.json"
+            };
+
+            mVnnID = VNN.createGeneral(modelPath);
+            Log.i(TAG, "mVnnID: " + mVnnID);
+            mOutImgWidth = 128;
+            mOutImgHeight = 128;
+        }
         if(effectMode == VNN_EFFECT_MODE.VNN_SKY_SEG) {
             String[] modelPath = {
                     sdcard + "/vnn_skyseg_data/sky_segment[1.0.0].vnnmodel",
@@ -358,6 +384,13 @@ public class VNNHelper {
             }
             Log.i(TAG, "mVnnPersonAttribID: " + mVnnPersonAttribID);
         }
+        if(effectMode == VNN_EFFECT_MODE.VNN_POSE_LANDMARKS) {
+            String[] modelPath = {
+                    sdcard + "/vnn_pose_data/pose_landmarks[1.0.0].vnnmodel"
+            };
+            mVnnID = VNN.createPoseLandmarks(modelPath);
+            Log.i(TAG, "mVnnID: " + mVnnID);
+        }
 
 
     }
@@ -395,12 +428,13 @@ public class VNNHelper {
             VNN.destroyDocRect(mVnnID);
         }
         if (effectMode == VNN_EFFECT_MODE.VNN_PORTRAIT_SEG ||
-            effectMode == VNN_EFFECT_MODE.VNN_SKY_SEG ||
-            effectMode == VNN_EFFECT_MODE.VNN_CLOTHES_SEG ||
-            effectMode == VNN_EFFECT_MODE.VNN_ANIMAL_SEG ||
-            effectMode == VNN_EFFECT_MODE.VNN_HAIR_SEG ||
-            effectMode == VNN_EFFECT_MODE.VNN_COMIC ||
-            effectMode == VNN_EFFECT_MODE.VNN_CARTOON) {
+                effectMode == VNN_EFFECT_MODE.VNN_VIDEO_PORTRAIT_SEG ||
+                effectMode == VNN_EFFECT_MODE.VNN_SKY_SEG ||
+                effectMode == VNN_EFFECT_MODE.VNN_CLOTHES_SEG ||
+                effectMode == VNN_EFFECT_MODE.VNN_ANIMAL_SEG ||
+                effectMode == VNN_EFFECT_MODE.VNN_HAIR_SEG ||
+                effectMode == VNN_EFFECT_MODE.VNN_COMIC ||
+                effectMode == VNN_EFFECT_MODE.VNN_CARTOON) {
             VNN.destroyGeneral(mVnnID);
         }
         if (effectMode == VNN_EFFECT_MODE.VNN_HEAD_SEG) {
@@ -408,13 +442,16 @@ public class VNNHelper {
             VNN.destroyGeneral(mVnnHeadSegID);
         }
         if (effectMode == VNN_EFFECT_MODE.VNN_OBJECT_CLASSIFICATION ||
-            effectMode == VNN_EFFECT_MODE.VNN_SCENE_WEATHER ||
-            effectMode == VNN_EFFECT_MODE.VNN_PERSON_ATTRIBUTE) {
+                effectMode == VNN_EFFECT_MODE.VNN_SCENE_WEATHER ||
+                effectMode == VNN_EFFECT_MODE.VNN_PERSON_ATTRIBUTE) {
             VNN.destroyClassifying(mVnnID);
         }
         if (effectMode == VNN_EFFECT_MODE.VNN_PERSON_ATTRIBUTE) {
             VNN.destroyFace(mVnnID);
             VNN.destroyClassifying(mVnnPersonAttribID);
+        }
+        if(effectMode == VNN_EFFECT_MODE.VNN_POSE_LANDMARKS) {
+            VNN.destroyPoseLandmarks(mVnnID);
         }
     }
     public long getImageOrientationFmt(boolean mirrorFlag, int cameraOrientation, int screenOrientation) {
@@ -508,7 +545,6 @@ public class VNNHelper {
         return oriFmt;
     }
     public void apply(int effectMode, VNN.VNN_Image inputImage, Canvas canvas){
-//        Log.e(TAG, "apply: effectMode = " + effectMode);
         int rotate = 0;
         switch (mScreenOrientation) {
             case 0:
@@ -533,7 +569,6 @@ public class VNNHelper {
                     faceDetectionFrameData.facesNum = 0;
                     VNN.setFacePoints(mVnnID, 278);
                     int ret = VNN.applyFaceCpu(mVnnID, inputImage, faceDetectionFrameData);
-                    Log.e(TAG, "apply: face count = " + faceDetectionFrameData.facesNum);
                     if(inputImage.mode_fmt == VNN.VNN_MODE_FMT.VNN_MODE_FMT_VIDEO)
                         VNN.processFaceResultRotate(mVnnID, faceDetectionFrameData, rotate);
                     drawFaceKeyPoints(canvas);
@@ -562,6 +597,9 @@ public class VNNHelper {
 
                     disneyDataArr.imgsNum = faceDetectionFrameData.facesNum;
                     VNN.applyFaceParserCpu(mVnnDisneyID, inputImage, faceDetectionFrameData, disneyDataArr);
+                    if(inputImage.mode_fmt == VNN.VNN_MODE_FMT.VNN_MODE_FMT_PICTURE) {
+                        blendForegroundBackground(canvas, mBackgroundImage, disneyDataArr, imageArr);
+                    }
                 }
                 break;
             }
@@ -574,6 +612,9 @@ public class VNNHelper {
                     game3dDataArr.imgsNum = faceDetectionFrameData.facesNum;
                     VNN.applyStylizingCpu(mVnn3DGameID, inputImage, faceDetectionFrameData, game3dDataArr);
                     VNN.getImageArrStylizing(mVnn3DGameID, "_Mask", game3dMaskDataArr);
+                    if(inputImage.mode_fmt == VNN.VNN_MODE_FMT.VNN_MODE_FMT_PICTURE) {
+                        blendForegroundBackground(canvas, mBackgroundImage, game3dDataArr, game3dMaskDataArr);
+                    }
                 }
                 break;
             }
@@ -614,27 +655,28 @@ public class VNNHelper {
                 break;
             }
             case VNN_EFFECT_MODE.VNN_PORTRAIT_SEG:
-                case VNN_EFFECT_MODE.VNN_SKY_SEG:
-                    case VNN_EFFECT_MODE.VNN_CLOTHES_SEG:
-                        case VNN_EFFECT_MODE.VNN_ANIMAL_SEG:
-                            case VNN_EFFECT_MODE.VNN_HAIR_SEG: {
-                                if (mVnnID != -1) {
-                                    imageArr.imgsNum = 1;
-                                    imageArr.imgsArr = new VNN.VNN_Image[imageArr.imgsNum];
-                                    for(int i = 0; i < imageArr.imgsNum; i++) {
-                                        imageArr.imgsArr[i] = new VNN.VNN_Image();
-                                        imageArr.imgsArr[i].data = new byte[mOutImgWidth * mOutImgHeight];
-                                        imageArr.imgsArr[i].rect = new float[4];
-                                        imageArr.imgsArr[i].width = mOutImgWidth;
-                                        imageArr.imgsArr[i].height = mOutImgHeight;
-                                    }
-                                    VNN.applyGeneralSegmentCpu(mVnnID, inputImage, null, imageArr);
-                                    if(inputImage.mode_fmt == VNN.VNN_MODE_FMT.VNN_MODE_FMT_PICTURE) {
-                                        drawSegmentResult(canvas, 0, inputImage.width, inputImage.height);
-                                    }
-                                }
-                                break;
-                            }
+            case VNN_EFFECT_MODE.VNN_VIDEO_PORTRAIT_SEG:
+            case VNN_EFFECT_MODE.VNN_SKY_SEG:
+            case VNN_EFFECT_MODE.VNN_CLOTHES_SEG:
+            case VNN_EFFECT_MODE.VNN_ANIMAL_SEG:
+            case VNN_EFFECT_MODE.VNN_HAIR_SEG: {
+                if (mVnnID != -1) {
+                    imageArr.imgsNum = 1;
+                    imageArr.imgsArr = new VNN.VNN_Image[imageArr.imgsNum];
+                    for(int i = 0; i < imageArr.imgsNum; i++) {
+                        imageArr.imgsArr[i] = new VNN.VNN_Image();
+                        imageArr.imgsArr[i].data = new byte[mOutImgWidth * mOutImgHeight];
+                        imageArr.imgsArr[i].rect = new float[4];
+                        imageArr.imgsArr[i].width = mOutImgWidth;
+                        imageArr.imgsArr[i].height = mOutImgHeight;
+                    }
+                    VNN.applyGeneralSegmentCpu(mVnnID, inputImage, null, imageArr);
+                    if(inputImage.mode_fmt == VNN.VNN_MODE_FMT.VNN_MODE_FMT_PICTURE) {
+                        drawSegmentResult(canvas, 0, inputImage.width, inputImage.height);
+                    }
+                }
+                break;
+            }
             case VNN_EFFECT_MODE.VNN_HEAD_SEG: {
                 if (mVnnID != -1 && mVnnHeadSegID != -1) {
                     faceDetectionFrameData.facesNum = 0;
@@ -656,24 +698,24 @@ public class VNNHelper {
                 break;
             }
             case VNN_EFFECT_MODE.VNN_COMIC:
-                case VNN_EFFECT_MODE.VNN_CARTOON:{
-                    if (mVnnID != -1) {
-                        imageArr.imgsNum = 1;
-                        imageArr.imgsArr = new VNN.VNN_Image[imageArr.imgsNum];
-                        for (int i = 0; i < imageArr.imgsNum; i++) {
-                            imageArr.imgsArr[i] = new VNN.VNN_Image();
-                            imageArr.imgsArr[i].data = new byte[mOutImgWidth * mOutImgHeight * 3];
-                            imageArr.imgsArr[i].rect = new float[4];
-                            imageArr.imgsArr[i].width = mOutImgWidth;
-                            imageArr.imgsArr[i].height = mOutImgHeight;
-                        }
-                        VNN.applyGeneralSegmentCpu(mVnnID, inputImage, null, imageArr);
-                        if(inputImage.mode_fmt == VNN.VNN_MODE_FMT.VNN_MODE_FMT_PICTURE) {
-                            drawSegmentResult(canvas, 1, inputImage.width, inputImage.height);
-                        }
+            case VNN_EFFECT_MODE.VNN_CARTOON:{
+                if (mVnnID != -1) {
+                    imageArr.imgsNum = 1;
+                    imageArr.imgsArr = new VNN.VNN_Image[imageArr.imgsNum];
+                    for (int i = 0; i < imageArr.imgsNum; i++) {
+                        imageArr.imgsArr[i] = new VNN.VNN_Image();
+                        imageArr.imgsArr[i].data = new byte[mOutImgWidth * mOutImgHeight * 3];
+                        imageArr.imgsArr[i].rect = new float[4];
+                        imageArr.imgsArr[i].width = mOutImgWidth;
+                        imageArr.imgsArr[i].height = mOutImgHeight;
                     }
-                    break;
+                    VNN.applyGeneralSegmentCpu(mVnnID, inputImage, null, imageArr);
+                    if(inputImage.mode_fmt == VNN.VNN_MODE_FMT.VNN_MODE_FMT_PICTURE) {
+                        drawSegmentResult(canvas, 1, inputImage.width, inputImage.height);
+                    }
                 }
+                break;
+            }
             case VNN_EFFECT_MODE.VNN_OBJECT_CLASSIFICATION:
             case VNN_EFFECT_MODE.VNN_SCENE_WEATHER: {
                 if (mVnnID != -1) {
@@ -696,10 +738,25 @@ public class VNNHelper {
                 }
                 break;
             }
+            case VNN_EFFECT_MODE.VNN_POSE_LANDMARKS: {
+                if (mVnnID != -1) {
+                    bodyFrameDataArr.bodyCount = 0;
+                    int ret = VNN.applyPoseLandmarksCpu(mVnnID, inputImage, bodyFrameDataArr);
+                    if(inputImage.mode_fmt == VNN.VNN_MODE_FMT.VNN_MODE_FMT_VIDEO) {
+                        VNN.processPoseResultRotate(mVnnID, bodyFrameDataArr, rotate);
+                    }
+                    drawPoseLandmarks(canvas);
+                }
+
+                break;
+            }
 
             default: return;
         }
         return;
+    }
+    public void getBackgroundImage(Bitmap bitmap) {
+        mBackgroundImage = bitmap;
     }
     public void drawFaceKeyPoints(Canvas canvas) {
         if (canvas == null) {
@@ -986,6 +1043,142 @@ public class VNNHelper {
         matrix.postScale(scaleW, scaleH);
         Bitmap resizeImage = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, true);
         return resizeImage;
+    }
+    private void blendForegroundBackground(Canvas canvas, Bitmap backImg, VNN.VNN_ImageArr foreData, VNN.VNN_ImageArr maskData) {
+        if (canvas == null) {
+            return;
+        }
+        int width = backImg.getWidth();
+        int height = backImg.getHeight();
+        int totalPixels = width * height;
+        @ColorInt int[] argbPixels = new int[totalPixels];
+        backImg.getPixels(argbPixels, 0, width, 0, 0, width, height);
+        for(int i = 0; i < foreData.imgsNum; i++) {
+            float cropLeftFloat = foreData.imgsArr[i].rect[0];
+            float cropTopFloat = foreData.imgsArr[i].rect[1];
+            float cropRightFloat = foreData.imgsArr[i].rect[2];
+            float cropBottomFloat = foreData.imgsArr[i].rect[3];
+            int cropLeft = (int)(cropLeftFloat * (width - 1));
+            int cropTop = (int)(cropTopFloat * (height - 1));
+            int cropRight = (int)(cropRightFloat * (width - 1));
+            int cropBottom = (int)(cropBottomFloat * (height - 1));
+            int cropWidth = cropRight - cropLeft + 1;
+            int cropHeight = cropBottom - cropTop + 1;
+            Bitmap maskImg = getBitmapImgFromMask(maskData.imgsArr[i].data, maskData.imgsArr[i].width, maskData.imgsArr[i].height);
+            Bitmap fgImg = getBitmapImgFromRGB(foreData.imgsArr[i].data, foreData.imgsArr[i].width, foreData.imgsArr[i].height);
+            Bitmap resizeMaskImg = resizeBitmap(maskImg, cropWidth, cropHeight);
+            Bitmap resizefgImg = resizeBitmap(fgImg, cropWidth, cropHeight);
+            int cropPixels = cropWidth * cropHeight;
+            @ColorInt int[] maskPixels = new int[cropPixels];
+            @ColorInt int[] fgPixels = new int[cropPixels];
+            resizeMaskImg.getPixels(maskPixels, 0, cropWidth, 0, 0, cropWidth, cropHeight);
+            resizefgImg.getPixels(fgPixels, 0, cropWidth, 0, 0, cropWidth, cropHeight);
+            for (int h = 0; h < cropHeight; ++h) {
+                int startH = cropTop + h;
+
+                if (startH < 0) {
+                    continue;
+                }
+                if (startH >= height) {
+                    break;
+                }
+                for (int w = 0; w < cropWidth; ++w) {
+                    int startW = cropLeft + w;
+                    if (startW < 0) {
+                        continue;
+                    }
+                    if (startW >= width) {
+                        break;
+                    }
+                    int idxBg =startH * width + startW;
+
+                    @ColorInt int bgPixel = argbPixels[idxBg];
+                    @ColorInt int maskPixel = maskPixels[h * cropWidth + w];
+                    @ColorInt int fgPixel = fgPixels[h * cropWidth + w];
+                    float mask_v = Color.red(maskPixel) / 255.f;
+                    float alpha = 1.0f - mask_v;
+                    int bgR = Color.red(bgPixel);
+                    int bgG = Color.green(bgPixel);
+                    int bgB = Color.blue(bgPixel);
+                    int fgR = Color.red(fgPixel);
+                    int fgG = Color.green(fgPixel);
+                    int fgB = Color.blue(fgPixel);
+
+                    int r = (int)(bgR * alpha + fgR * mask_v);
+                    int g = (int)(bgG * alpha + fgG * mask_v);
+                    int b = (int)(bgB * alpha + fgB * mask_v);
+                    r = r > 255 ? 255 : r;
+                    g = g > 255 ? 255 : g;
+                    b = b > 255 ? 255 : b;
+
+                    int  color = Color.argb(255, r, g, b);
+                    argbPixels[idxBg] = color;
+                }
+            }
+
+        }
+        Bitmap bitmap = Bitmap.createBitmap(argbPixels, width, height, Bitmap.Config.ARGB_8888);
+
+        canvas.drawBitmap(bitmap, 0, 0, mPaint);
+    }
+
+    private void drawPoseLandmarks(Canvas canvas) {
+
+        if (canvas == null) {
+            return;
+        }
+
+
+        if (bodyFrameDataArr.bodyCount > 0) {
+            for (int i = 0; i < bodyFrameDataArr.bodyCount; i++) {
+                int strokeWidth = 10;
+                if (canvas.getWidth() != 1080) {
+                    strokeWidth = (int) (strokeWidth * canvas.getWidth() / 1080);
+                }
+                Rect bodyRect = new Rect();
+                bodyRect.left = (int) (bodyFrameDataArr.bodyArr[i].bodyRect[0] * canvas.getWidth());
+                bodyRect.top = (int) (bodyFrameDataArr.bodyArr[i].bodyRect[1] * canvas.getHeight());
+                bodyRect.right = (int) (bodyFrameDataArr.bodyArr[i].bodyRect[2] * canvas.getWidth());
+                bodyRect.bottom = (int) (bodyFrameDataArr.bodyArr[i].bodyRect[3] * canvas.getHeight());
+                mPaint.setStrokeWidth(strokeWidth);
+                mPaint.setColor(Color.parseColor("#0a8dfd"));
+                mPaint.setStyle(Paint.Style.STROKE);
+                canvas.drawRect(bodyRect, mPaint);
+                mPaint.setStrokeWidth(strokeWidth);
+                mPaint.setStyle(Paint.Style.FILL);
+                mPaint.setColor(Color.parseColor("#0a8dff"));
+                for (int pairIdx = 0; pairIdx < bodyFrameDataArr.bodyArr[i].bodyPoints.length / 2; pairIdx++) {
+                    int idxA = pa[pairIdx];
+                    int idxB = pb[pairIdx];
+                    if (bodyFrameDataArr.bodyArr[i].bodyPointsScore[idxB] > 0.3 &&
+                            bodyFrameDataArr.bodyArr[i].bodyPointsScore[idxA] > 0.3) {
+                        float pointAx = bodyFrameDataArr.bodyArr[i].bodyPoints[idxA * 2] * canvas.getWidth();
+                        float pointAy = bodyFrameDataArr.bodyArr[i].bodyPoints[idxA * 2 + 1] * canvas.getHeight();
+                        float pointBx = bodyFrameDataArr.bodyArr[i].bodyPoints[idxB * 2] * canvas.getWidth();
+                        float pointBy = bodyFrameDataArr.bodyArr[i].bodyPoints[idxB * 2 + 1] * canvas.getHeight();
+
+                        if ((int) pointAx > 0 && (int) pointAy > 0 && (int) pointBx > 0 && (int) pointBy > 0) {
+//                            if((pointAx < 10 && pointAy < 10) || (pointBx < 10 && pointBy < 10)) {
+//                                Log.e(TAG, "(" + pointAx + "," + pointAy + ") (" + pointBx + "," + pointBy + ")");
+//                                Log.e(TAG, "score A:"+bodyFrameData.bodyArr[i].bodyPointsScore[idx_a]);
+//                                Log.e(TAG, "score B:"+bodyFrameData.bodyArr[i].bodyPointsScore[idx_b]);
+//                            }
+                            canvas.drawLine(pointAx, pointAy, pointBx, pointBy, mPaint);
+                        }
+                    }
+                }
+
+                for (int j = 0; j < bodyFrameDataArr.bodyArr[i].bodyPoints.length / 2; j++) {
+                    mPaint.setColor(Color.rgb(0, 218, 0));
+                    float pointAx = bodyFrameDataArr.bodyArr[i].bodyPoints[j * 2] * canvas.getWidth();
+                    float pointAy = bodyFrameDataArr.bodyArr[i].bodyPoints[j * 2 + 1] * canvas.getHeight();
+                    if ((int) pointAx > 0 && (int) pointAy > 0) {
+                        canvas.drawCircle(pointAx, pointAy, strokeWidth, mPaint);
+                    }
+                }
+            }
+        }
+
     }
 
 }

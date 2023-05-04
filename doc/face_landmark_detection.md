@@ -2,6 +2,8 @@
 - [人脸关键点检测](#人脸关键点检测)
 - [一、SDK功能](#一sdk功能)
 - [二、技术规格](#二技术规格)
+	- [移动端](#移动端)
+	- [PC端](#pc端)
 - [三、资源依赖](#三资源依赖)
 	- [3.1 头文件](#31-头文件)
 	- [3.2 模型文件](#32-模型文件)
@@ -29,6 +31,9 @@ API的执行情况（是否成功、错误原因等）可参考 ```VNN_Result```
 ---
 
 # 二、技术规格
+
+## 移动端
+
 | 指标               | 参数                                |
 | ------------------ | ----------------------------------- |
 | 支持图片格式       | BGRA、RGBA、RGB、NV12、NV21、YUV420 |
@@ -36,6 +41,16 @@ API的执行情况（是否成功、错误原因等）可参考 ```VNN_Result```
 | Android系统版本    | 5.0+                                |
 | iOS系统版本        | 9.0+                                |
 | 最大支持检测人脸数 | 5                                   |
+
+## PC端
+
+| 指标               | 参数                                       |
+| ------------------ | ------------------------------------------ |
+| 支持图片格式       | BGRA、RGBA、RGB、YUV420F                   |
+| 支持架构           | x86(Win Only)、x86_64、arm64(MacOS Only)） |
+| Windows系统版本    | Win 7+                                     |
+| MacOS系统版本      | 10.10+                                     |
+| 最大支持检测人脸数 | 5                                          |
 
 ---
 
@@ -49,10 +64,11 @@ vnn_define.h
 ```
 ## 3.2 模型文件
 ```
-face_mobile[1.0.0].vnnmodel
+face_mobile[1.0.0].vnnmodel //移动端使用
+face_pc[1.0.0].vnnmodel     //PC端使用
 ```
 ## 3.3 动态库
-Android
+Android/Linux
 ```
 libvnn_core.so
 libvnn_kit.so
@@ -67,6 +83,22 @@ vnn_core_ios.framework
 vnn_kit_ios.framework
 vnn_face_ios.framework
 ```
+MacOS
+```
+Accelerate.framework
+CoreVideo.framework
+Cocoa.framework
+vnn_core_osx.framework
+vnn_kit_osx.framework
+vnn_face_osx.framework
+```
+Windows
+```
+vnn_core.dll
+vnn_kit.dll
+vnn_face.dll
+```
+
 ---
 
 # 四、相关说明
@@ -107,7 +139,10 @@ input.mode_fmt = VNN_MODE_FMT_VIDEO; // 用于视频流检测
 
 ## 4.4 Demo示例   
 Android: [链接](../demos/Android/vnn_android_demo/app/src/main/java/com/duowan/vnndemo/CameraActivity.java)   
-iOS: [链接](../demos/iOS/vnn_ios_demo/ios/CameraViewctrls/ViewCtrl_Camera_Face.mm)  
+iOS: [链接](../demos/iOS/vnn_ios_demo/ios/CameraViewctrls/ViewCtrl_Camera_Face.mm)   
+Windows: [链接](../demos/Windows/vnn_win_demo/demo/src/vnn_helper.cpp)   
+MaoOS: [链接](../demos/MacOS/vnn_macos_demo/osx/CameraWindowCtrls/WindowCtrl_Camera_FaceLandmarkDetection.mm)    
+Linux: [链接](../demos/Linux/vnn_linux_demo/demo/src/vnn_helper.cpp)   
 
 ---
 # 五、API文档
@@ -127,7 +162,8 @@ VNN_Result VNN_Create_Face( VNNHandle * handle, const int argc, const void * arg
 ``` cpp
 VNN_Handle _handle;
 
-std::string model = _modelpath + "/face_mobile[1.0.0].vnnmodel";
+std::string model = _modelpath + "/face_mobile[1.0.0].vnnmodel"; // 移动端模型
+// std::string model = _modelpath + "/face_pc[1.0.0].vnnmodel";  // PC端模型
 
 const char* argv[] = {
 	model.c_str(),
@@ -212,11 +248,12 @@ VNN_Result VNN_Get_Face_Attr( VNNHandle handle, const char * name, const void * 
 
  **合法属性名和属性值**  
 
- | 属性名          | 属性含义                        | 属性值                                    | 属性值类型            |
- | --------------- | ------------------------------- | ----------------------------------------- | --------------------- |
- | _use_104pt      | 获取当前是否使用104点检测的信息 | 0（未使用104点）、1（使用104点）          | int*                  |
- | _use_278pt      | 获取当前是否使用278点检测的信息 | 0（未使用278点）、1（使用278点）          | int*                  |
- | _detection_data | 获取相对人脸适当扩大的检测框    | 有效的VNN_FaceFrameDataArr对象的地址/指针 | VNN_FaceFrameDataArr* |
+ | 属性名           | 属性含义                                                                     | 属性值                                    | 属性值类型            |
+ | ---------------- | ---------------------------------------------------------------------------- | ----------------------------------------- | --------------------- |
+ | _use_104pt       | 获取当前是否使用104点检测的信息                                              | 0（未使用104点）、1（使用104点）          | int*                  |
+ | _use_278pt       | 获取当前是否使用278点检测的信息                                              | 0（未使用278点）、1（使用278点）          | int*                  |
+ | _allowFaceAction | 是否检测脸部动作（视频模式可检测闭眼、眨眼、张嘴，图片模式可检测闭眼、张嘴） | 0（关闭，默认值）、1（启用）              | int*                  |
+ | _detection_data  | 获取相对人脸适当扩大的检测框                                                 | 有效的VNN_FaceFrameDataArr对象的地址/指针 | VNN_FaceFrameDataArr* |
 
 
 返回值: VNN_Result，具体值参见 状态码表  

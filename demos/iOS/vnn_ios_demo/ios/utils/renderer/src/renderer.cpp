@@ -1,11 +1,7 @@
-#ifdef _WIN32
-//define something for Windows (32-bit and 64-bit, this part is common)
-#	include <windows.h>
-#	ifdef _WIN64
-//		define something for Windows (64-bit only)
-#	else
-//		define something for Windows (32-bit only)
-#	endif
+//-------------------------------------------------------------------------------------------------------
+// Copyright (c) 2021 Guangzhou Joyy Information Technology Co., Ltd. All rights reserved.
+// Licensed under the MIT license. See license.txt file in the project root for full license information.
+//-------------------------------------------------------------------------------------------------------
 
 #elif __APPLE__
 #	include "TargetConditionals.h"
